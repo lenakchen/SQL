@@ -1,0 +1,328 @@
+$ Intro 
+Structured Query Language
+
+1. six basic ops
+Database - (select - join - filter - append - aggregate - sort )- Results
+            
+2. A database:
+stores tabular data;
+can export data to other programs
+
+3. SQL is case-sensitive when matching strings, 
+but it is case-INsensitive for the other parts of the query.
+For example, you could write the query “sEleCt * fRoM exPeriMent;” 
+and it would run just fine.
+But when you are looking at the actual values in the table, the case matters. 
+So something like select * from experiment where loginid=”IVAN”;
+will return no results, since there is no one with the LoginID “IVAN”. 
+Changing it to select * from experiment where loginid=”ivan”;
+will get you the result you want.
+
+
+$ Selecting data
+
+1. select
+SELECT Project, LoginID, Project, Project, Hours FROM Experiment;
+
+SELECT * FROM Experiement;
+
+SELECT DISTINCT Project FROM Experiement;
+
+SELECT DISTINCT Project, LoginID FROM Experiement;
+
+2. expression
+SELECT *, Hours*.1 FROM Experiement;
+SELECT *, ROUND(Hours*.1, 1) FROM Experiement;
+
+3. Exercise:
+
+From the command line, type sqlite3 nobel_prizes.database to open 
+the Nobel prizes database.
+This database only contains one table: Nobel_Prizes.
+
+~ > sqlite3 nobel_prizes.sqlite
+sqlite> .tables
+## to list all the tables in the database
+sqlite> PRAGMA table_info(Nobel_Prizes);  
+## will get you a list of all the column names.
+sqlite> SELECT * FROM Nobel_Prizes;
+sqlite> SELECT Name, Year FROM Nobel_Prizes;
+sqlite> SELECT DISTINCT Area FROM Nobel_Prizes;
+sqlite> SELECT Name, UPPER(Name) FROM Nobel_Prizes;
+
+$ Filtering
+
+1. WHERE clause
+
+SELECT * FROM Experiment WHERE ExperimentDate < '1990-01-01';
+
+SELECT * FROM Experiment WHERE Hours >=3;
+
+SELECT * FROM Experiment 
+     WHERE Hours >=3 AND LoginID = 'mlom';
+     
+     
+SELECT * FROM Experiment 
+     WHERE Hours >=3 AND (LoginID = 'mlom' OR LoginID = 'best');
+  
+## use IN 
+SELECT * FROM Experiment 
+     WHERE Hours >=3 AND LoginID IN ('mlom', 'best');
+  
+
+2. Exercises
+
+sqlite> SELECT * FROM Nobel_Prizes
+   ...> WHERE Area = 'peace' AND Year < 1910;
+
+
+sqlite> SELECT * FROM Nobel_Prizes 
+   ...> WHERE Name = 'Marie Curie';
+
+sqlite> SELECT * FROM Nobel_Prizes 
+   ...> WHERE Area IN ('chemistry', 'peace', 'physics');
+
+sqlite> SELECT * FROM Nobel_Prizes 
+   ...> WHERE Area NOT IN ('chemistry', 'peace', 'physics');
+
+
+
+$ Sorting
+
+1. ORDER BY clause
+
+SELECT * FROM Experiment ORDER BY Project ASC;
+## sorting by ascending order
+
+SELECT * FROM Experiment ORDER BY Project DESC;
+## sorting by descending order
+
+SELECT * FROM Experiment ORDER BY Project DESC, Hours ASC;
+
+SELECT LoginID, Project, Hours FROM Experiment 
+     ORDER BY ExperimentDate;
+
+
+SELECT *, RANDOM() FROM Experiment;
+
+SELECT * FROM Experiment
+ORDER BY RANDOM()
+(tip: run the query twice)
+
+## random sorting: 
+In SQLite, the RANDOM() function returns a psuedo-random integer
+
+
+SELECT *, ROUND(Hours*.1, 1)
+FROM Experiment
+WHERE Hours >= 3
+ORDER By ExperimentDate DESC;
+
+## The order that you see the clauses in here is required by SQL. 
+The SELECT must come before the FROM, the WHERE clause must come after the FROM, 
+and ORDER BY clause comes last.
+
+
+
+2. Exercises
+
+sqlite> SELECT * FROM Nobel_Prizes ORDER BY Year;
+
+sqlite> SELECT * FROM Nobel_Prizes ORDER BY Area DESC, Year ASC;
+
+sqlite> SELECT * FROM Nobel_Prizes 
+   ...> WHERE Year <= 1950
+   ...> ORDER BY Area;
+
+
+$ Aggregation
+
+1. SUM, MIN, MAX, AVG
+
+SELECT SUM(Hours) FROM Experiment
+WHERE LoginID = 'mlom';
+
+SELECT LoginID, SUM(Hours) FROM Experiment;
+## problem: What we want to be able to is have the database return 
+a row for eachscientist, and include a sum of the hours they have worked
+But this query returns a single row, not one for each scientist.
+When we used SUM, the database was collapsing these rows by summing the
+Hours column, but since we haven’t specified a aggregation function for
+LoginID, the database just picks an arbitrary LoginID and returns it.
+
+＃＃If your query selects fields directly from a table and aggregates at 
+the same time, the values for unaggregated fields can be any value in the
+records being aggregated.
+
+
+2. GROUP BY
+＃＃ So, if we want the total number of hours each scientist has worked so
+far we need to tell the database to aggregate the hours for each
+scientist separately.
+
+
+SELECT LoginID, Project, SUM(Hours) FROM Experiment
+GROUP BY LoginID, Project;
+## all of rows, sums done for each of those groups
+So, this query tells the database to group all of the rows that have the
+same LoginID together, and then do the aggregation for each of those
+groups separately.
+
+
+3. COUTNT
+
+SELECT COUNT(*) FROM Experiment;
+## counting the total # of records  not of counting
+anything in a particular column.
+
+SELECT LoginID, Project, SUM(Hours), COUNT(*) FROM Experiment
+GROUP BY LoginID, Project;   
+
+SELECT Project, SUM(Hours) FROM Experiment 
+GROUP BY Project
+ORDER BY Project ASC; 
+
+SELECT Project, SUM(Hours) FROM Experiment 
+GROUP BY Project
+ORDER BY SUM(Hours) ASC;
+
+
+SELECT Project, SUM(Hours) FROM Experiment 
+WHERE Hours >= 0
+GROUP BY Project
+ORDER BY SUM(Hours) ASC;
+
+
+4. Exercises
+
+SELECT MIN(Year) FROM Nobel_Prizes;
+
+SELECT COUNT(*) FROM Nobel_Prizes;
+
+SELECT Area, Year, COUNT(*) FROM Nobel_Prizes
+GROUP BY Area, Year;
+
+
+SELECT Area, COUNT(*) FROM Nobel_Prizes
+GROUP BY Area
+ORDER BY Area ASC;
+
+
+SELECT Area, COUNT(*) FROM Nobel_Prizes
+GROUP BY Area
+ORDER BY COUNT(*) DESC;
+
+SELECT Area, COUNT(*) FROM Nobel_Prizes
+WHERE Area != 'chemistry'
+GROUP BY Area;
+
+
+
+$ Joining Tables
+
+1. JOIN
+
+SELECT * FROM Person
+JOIN Experiment;
+
+SELECT * FROM Person
+JOIN Experiment
+ON Person.LoginID = Experiment.LoginID
+## ON clause is like WHERE clause
+
+## 
+SELECT Person.FirstName, Experiment.* 
+FROM Person 
+JOIN Experiment 
+ON Person.LoginID = Experiment.LoginID;
+
+## simplify
+SELECT p.FirstName, e.* 
+FROM Person p
+JOIN Experiment e 
+ON p.LoginID = e.LoginID;
+
+SELECT p.FirstName, p.LastName, e.ExperimentDate, ed.ExperimentName, ed.Location
+FROM Person p
+JOIN Experiment e 
+ON p.LoginID = e.LoginID
+JOIN ExperimentDetail ed
+ON (e.Project = ed.Project AND e.Experiment = ed.Experiment);
+
+
+
+2. Exercises
+
+SELECT *
+FROM Experiment e
+JOIN ExperimentDetail ed
+ON e.Project = ed.Project;
+
+SELECT e.LoginID, e.Project, ed.ExperimentName
+FROM Experiment e
+JOIN ExperimentDetail ed
+ON e.Project = ed.Project;
+
+
+SELECT *
+FROM Experiment e
+JOIN ExperimentDetail ed
+ON (e.Project = ed.Project AND e.Experiment = ed.Experiment)
+JOIN Person p
+ON p.LoginID = e.LoginID;
+
+SELECT *
+FROM Person p
+JOIN Experiment e
+ON p.LoginID = e.loginID
+JOIN ExperimentDetail ed
+ON (e.Project = ed.Project AND e.Experiment = ed.Experiment);
+
+## For Question 4, it seems like you can join the tables in any order, 
+but the columns of the returned table will follow the order of the 
+joining. For example, in the answer above, the first group of columns 
+would be from Person, the second group from Experiment, and the last 
+group from ExperimentDetail.
+
+
+$ Missing data
+
+A database uses a special value for these holes: NULL
+
+NULL is not zero, False, or the empty String, it is simply just a
+different kind of value.
+
+1. Null
+
+SELECT * FROM Experiment WHERE Hours = NULL;
+## get no results. For many database systems, NULL is a special value that isn’t comparable
+to anything else using the usual equality operators (e.g. =, !=, ,
+…).
+## Comparing NULL to any other value using these operators always return
+False.
+
+## always false, and no values returned
+
+
+2. IS
+## IS is used to compare fields to NULL.
+
+SELECT * FROM Experiment WHERE Hours IS NULL;
+
+SELECT * FROM Experiment WHERE Hours IS NOT NULL;
+
+SELECT * FROM Experiment WHERE Hours != 7;
+## Notice that the results are missing the records with NULL values in the
+Hours field. Those records were filtered out because, as we’ve said, only
+the IS and IS NOT operator will return True when comparing a NULL to
+another value.
+
+SELECT * FROM Experiment WHERE Hours != 7 OR Hours IS NULL;
+
+3. aggregate
+## NULL values are also handled differently by aggregation functions.
+## Most aggregation functions ignore NULL values in their calculations.
+## NULL values are skipped, and so they don’t count towards the average or sum, etc.
+
+SELECT SUM(Hours) FROM Experiment;
+
